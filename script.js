@@ -7,211 +7,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const allCheckbox = document.getElementById('all');
     const clearBtn = document.getElementById('clearBtn');
 
-    // Variables de estado
-    let currentSearchTerm = '';
-    let currentDorks = [];
-
-    // Inicialización
-    initEventListeners();
-    toggleCategoryCheckboxes(true);
-
-    function initEventListeners() {
-        // Checkbox "Todo"
-        allCheckbox.addEventListener('change', function() {
-            toggleCategoryCheckboxes(this.checked);
+    // Manejar el checkbox "Todo"
+    allCheckbox.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]:not(#all)');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
         });
+    });
 
-        // Botón Limpiar
-        clearBtn.addEventListener('click', resetSearch);
+    // Manejar el botón de limpiar
+    clearBtn.addEventListener('click', function() {
+        searchForm.reset();
+        resultsCard.style.display = 'none';
+        allCheckbox.checked = true;
+    });
 
-        // Formulario de búsqueda
-        searchForm.addEventListener('submit', handleSearchSubmit);
-
-        // Botón Copiar Todos
-        copyAllBtn.addEventListener('click', copyAllDorks);
-
-        // Delegación de eventos para elementos dinámicos
-        document.addEventListener('click', handleDynamicElements);
-    }
-
-    function handleSearchSubmit(e) {
+    // Manejar el envío del formulario
+    searchForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        currentSearchTerm = document.getElementById('searchTerm').value.trim();
+        const searchTerm = document.getElementById('searchTerm').value.trim();
         const customDork = document.getElementById('customDork').value.trim();
 
-        if (!currentSearchTerm && !customDork) {
-            showAlert('Por favor ingresa un término de búsqueda o un dork personalizado', 'warning');
+        if (!searchTerm && !customDork) {
+            alert('Por favor ingresa un término de búsqueda o un dork personalizado');
             return;
         }
 
         showLoading();
-        
-        // Pequeño retraso para mejor experiencia de usuario
         setTimeout(() => {
-            performSearch(currentSearchTerm, customDork);
+            performSearch(searchTerm, customDork);
         }, 300);
-    }
+    });
 
-    function performSearch(term, customDork) {
-        currentDorks = [];
-        resultsContainer.innerHTML = '';
-        
-        // Mostrar tarjeta de resultados
-        resultsCard.style.display = 'block';
-
-        if (customDork) {
-            addSearchResult('Búsqueda personalizada', customDork);
-            return;
-        }
-
-        // Generar dorks según categorías seleccionadas
-        const formattedTerm = term.includes(' ') ? `"${term}"` : term;
-        
-        if (document.getElementById('emails').checked) {
-            addDorkCategory('Correos electrónicos', [
-                `intext:"@${formattedTerm}"`,
-                `intext:"${formattedTerm}@"`,
-                `"@${formattedTerm}" filetype:csv`
-            ]);
-        }
-        
-        if (document.getElementById('domains').checked) {
-            addDorkCategory('Dominios y sitios', [
-                `site:${formattedTerm}`,
-                `inurl:${formattedTerm}`,
-                `site:*.${formattedTerm}`
-            ]);
-        }
-        
-        if (document.getElementById('social').checked) {
-            addDorkCategory('Redes sociales', [
-                `site:facebook.com ${formattedTerm}`,
-                `site:twitter.com ${formattedTerm}`,
-                `site:linkedin.com/in ${formattedTerm}`,
-                `site:instagram.com ${formattedTerm}`
-            ]);
-        }
-        
-        if (document.getElementById('documents').checked) {
-            addDorkCategory('Documentos', [
-                `site:${formattedTerm} filetype:pdf`,
-                `site:${formattedTerm} (filetype:doc OR filetype:docx)`,
-                `site:${formattedTerm} (filetype:xls OR filetype:xlsx)`,
-                `site:${formattedTerm} (filetype:ppt OR filetype:pptx)`
-            ]);
-        }
-        
-        if (document.getElementById('credentials').checked) {
-            addDorkCategory('Credenciales', [
-                `intitle:"index of" "${formattedTerm}"`,
-                `intext:"password" site:${formattedTerm}`,
-                `site:${formattedTerm} (ext:env OR ext:config)`,
-                `filetype:log intext:"password" ${formattedTerm}`
-            ]);
-        }
-
-        if (currentDorks.length === 0) {
-            resultsContainer.innerHTML = '<div class="alert alert-warning">No se seleccionaron categorías para buscar.</div>';
-        }
-    }
-
-    function addDorkCategory(title, dorks) {
-        const categoryElement = document.createElement('div');
-        categoryElement.className = 'mb-4';
-        categoryElement.innerHTML = `<h4>${title}</h4>`;
-        
-        dorks.forEach(dork => {
-            currentDorks.push(dork);
-            categoryElement.appendChild(createDorkResultElement(dork));
-        });
-        
-        resultsContainer.appendChild(categoryElement);
-    }
-
-    function createDorkResultElement(dork) {
-        const element = document.createElement('div');
-        element.className = 'd-flex align-items-center mb-2 p-2 bg-light rounded';
-        element.innerHTML = `
-            <code class="flex-grow-1 me-2">${dork}</code>
-            <button class="btn btn-sm btn-outline-primary search-button me-2" data-dork="${dork}">
-                <i class="fas fa-external-link-alt me-1"></i> Buscar
-            </button>
-            <button class="btn btn-sm btn-outline-secondary copy-dork" data-dork="${dork}">
-                <i class="fas fa-copy"></i>
-            </button>
-        `;
-        return element;
-    }
-
-    function handleDynamicElements(e) {
-        // Botones de búsqueda en Google
-        if (e.target.closest('.search-button')) {
-            const button = e.target.closest('.search-button');
-            const dork = button.getAttribute('data-dork');
-            window.open(`https://www.google.com/search?q=${encodeURIComponent(dork)}`, '_blank');
-        }
-
-        // Botones de plantillas
-        if (e.target.closest('.use-template')) {
-            const button = e.target.closest('.use-template');
-            document.getElementById('customDork').value = button.getAttribute('data-dork');
-            document.getElementById('all').checked = false;
-            toggleCategoryCheckboxes(false);
-        }
-
-        // Botones Copiar
-        if (e.target.closest('.copy-dork')) {
-            const button = e.target.closest('.copy-dork');
-            copyToClipboard(button.getAttribute('data-dork'), button);
-        }
-    }
-
-    function copyAllDorks() {
-        if (currentDorks.length === 0) {
-            showAlert('No hay dorks para copiar', 'warning');
-            return;
-        }
-
-        const allDorks = currentDorks.join('\n\n');
-        copyToClipboard(allDorks, copyAllBtn, 'Todos los dorks copiados');
-    }
-
-    function copyToClipboard(text, button, successMessage = 'Copiado al portapapeles') {
-        navigator.clipboard.writeText(text).then(() => {
-            const originalHTML = button.innerHTML;
-            button.innerHTML = `<i class="fas fa-check me-1"></i> ${successMessage}`;
-            button.classList.add('btn-success');
-            button.classList.remove('btn-outline-primary', 'btn-outline-secondary');
-            
-            setTimeout(() => {
-                button.innerHTML = originalHTML;
-                button.classList.remove('btn-success');
-                if (button.classList.contains('search-button')) {
-                    button.classList.add('btn-outline-primary');
-                } else {
-                    button.classList.add('btn-outline-secondary');
-                }
-            }, 2000);
-        }).catch(err => {
-            showAlert('Error al copiar: ' + err, 'danger');
-        });
-    }
-
-    function toggleCategoryCheckboxes(checked) {
-        document.querySelectorAll('input[type="checkbox"]:not(#all)').forEach(checkbox => {
-            checkbox.checked = checked;
-        });
-    }
-
-    function resetSearch() {
-        searchForm.reset();
-        resultsCard.style.display = 'none';
-        currentSearchTerm = '';
-        currentDorks = [];
-        allCheckbox.checked = true;
-        toggleCategoryCheckboxes(true);
-    }
-
+    // Función para mostrar carga
     function showLoading() {
         resultsCard.style.display = 'block';
         resultsContainer.innerHTML = `
@@ -224,20 +52,89 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    function showAlert(message, type) {
-        const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show`;
-        alert.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
+    // Función principal de búsqueda
+    function performSearch(term, customDork) {
+        resultsContainer.innerHTML = '';
         
-        const container = document.querySelector('.container.mt-4');
-        container.prepend(alert);
+        if (customDork) {
+            addSearchResult('Búsqueda personalizada', customDork);
+            return;
+        }
+
+        // Generar dorks según categorías seleccionadas
+        if (document.getElementById('emails').checked) {
+            addSearchResult('Correos electrónicos', `intext:"@${term}" OR intext:"${term}@"`);
+        }
         
-        setTimeout(() => {
-            alert.classList.remove('show');
-            setTimeout(() => alert.remove(), 150);
-        }, 5000);
+        if (document.getElementById('domains').checked) {
+            addSearchResult('Dominios', `site:${term} OR inurl:${term}`);
+        }
+        
+        if (document.getElementById('social').checked) {
+            addSearchResult('Redes sociales', `site:facebook.com ${term} OR site:twitter.com ${term}`);
+        }
+        
+        if (document.getElementById('documents').checked) {
+            addSearchResult('Documentos', `site:${term} filetype:pdf`);
+        }
+        
+        if (document.getElementById('credentials').checked) {
+            addSearchResult('Credenciales', `intitle:"index of" "${term}"`);
+        }
     }
+
+    // Añadir resultados al DOM
+    function addSearchResult(title, dork) {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'mb-3 p-3 border-bottom';
+        resultDiv.innerHTML = `
+            <h5>${title}</h5>
+            <code>${dork}</code>
+            <button class="btn btn-sm btn-primary ms-2 search-btn" data-dork="${dork}">
+                <i class="fas fa-search"></i> Buscar en Google
+            </button>
+            <button class="btn btn-sm btn-secondary ms-2 copy-btn" data-dork="${dork}">
+                <i class="fas fa-copy"></i> Copiar
+            </button>
+        `;
+        resultsContainer.appendChild(resultDiv);
+    }
+
+    // Delegación de eventos para elementos dinámicos
+    document.addEventListener('click', function(e) {
+        // Botones de búsqueda
+        if (e.target.closest('.search-btn')) {
+            const dork = e.target.closest('.search-btn').getAttribute('data-dork');
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(dork)}`, '_blank');
+        }
+        
+        // Botones de copiar
+        if (e.target.closest('.copy-btn')) {
+            const dork = e.target.closest('.copy-btn').getAttribute('data-dork');
+            navigator.clipboard.writeText(dork)
+                .then(() => alert('Dork copiado al portapapeles'))
+                .catch(err => console.error('Error al copiar:', err));
+        }
+        
+        // Plantillas predefinidas
+        if (e.target.closest('.use-template')) {
+            document.getElementById('customDork').value = e.target.closest('.use-template').getAttribute('data-dork');
+            document.getElementById('all').checked = false;
+        }
+    });
+
+    // Botón Copiar Todos
+    copyAllBtn.addEventListener('click', function() {
+        const allDorks = Array.from(document.querySelectorAll('.search-btn'))
+            .map(btn => btn.getAttribute('data-dork'))
+            .join('\n\n');
+        
+        if (allDorks) {
+            navigator.clipboard.writeText(allDorks)
+                .then(() => alert('Todos los dorks copiados'))
+                .catch(err => console.error('Error al copiar:', err));
+        } else {
+            alert('No hay dorks para copiar');
+        }
+    });
 });
