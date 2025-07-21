@@ -5,54 +5,64 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsContainer = document.getElementById('resultsContainer');
     const copyAllBtn = document.getElementById('copyAll');
     const allCheckbox = document.getElementById('all');
-    
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Manejar el checkbox "Todo"
+    allCheckbox.addEventListener('change', function() {
+        toggleCategoryCheckboxes(this.checked);
+    });
+
     // Manejar el botón de limpiar
-    document.getElementById('clearBtn').addEventListener('click', function() {
+    clearBtn.addEventListener('click', function() {
         searchForm.reset();
         resultsCard.style.display = 'none';
         allCheckbox.checked = true;
         toggleCategoryCheckboxes(true);
     });
-    
-    // Manejar los botones de plantillas
-    document.querySelectorAll('.use-template').forEach(button => {
-        button.addEventListener('click', function() {
-            const dork = this.getAttribute('data-dork');
-            document.getElementById('customDork').value = dork;
-            allCheckbox.checked = false;
-            toggleCategoryCheckboxes(false);
-        });
-    });
-    
-    // Manejar el checkbox "Todo"
-    allCheckbox.addEventListener('change', function() {
-        toggleCategoryCheckboxes(this.checked);
-    });
-    
+
     // Manejar el envío del formulario
     searchForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
         const searchTerm = document.getElementById('searchTerm').value.trim();
         const customDork = document.getElementById('customDork').value.trim();
-        
+
         if (!searchTerm && !customDork) {
             showAlert('Por favor ingresa un término de búsqueda o un dork personalizado', 'warning');
             return;
         }
-        
+
         showLoading();
         setTimeout(() => {
             performSearch(searchTerm, customDork);
-        }, 800);
+        }, 300);
     });
-    
+
+    // Delegación de eventos para botones dinámicos
+    document.addEventListener('click', function(e) {
+        // Botones de búsqueda en Google
+        if (e.target.classList.contains('search-button') || e.target.closest('.search-button')) {
+            const button = e.target.classList.contains('search-button') ? 
+                          e.target : e.target.closest('.search-button');
+            const dork = button.getAttribute('data-dork');
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(dork)}`, '_blank');
+        }
+
+        // Botones de plantillas
+        if (e.target.classList.contains('use-template') || e.target.closest('.use-template')) {
+            const button = e.target.classList.contains('use-template') ? 
+                          e.target : e.target.closest('.use-template');
+            document.getElementById('customDork').value = button.getAttribute('data-dork');
+            document.getElementById('all').checked = false;
+            toggleCategoryCheckboxes(false);
+        }
+    });
+
     // Copiar todos los dorks
     copyAllBtn.addEventListener('click', function() {
         const dorks = Array.from(document.querySelectorAll('.search-item code'))
             .map(code => code.textContent)
             .join('\n\n');
-        
+
         if (dorks) {
             navigator.clipboard.writeText(dorks).then(() => {
                 showAlert('Todos los dorks copiados al portapapeles', 'success');
@@ -63,14 +73,14 @@ document.addEventListener('DOMContentLoaded', function() {
             showAlert('No hay dorks para copiar', 'warning');
         }
     });
-    
+
     // Funciones auxiliares
     function toggleCategoryCheckboxes(checked) {
         document.querySelectorAll('input[type="checkbox"]:not(#all)').forEach(checkbox => {
             checkbox.checked = checked;
         });
     }
-    
+
     function showLoading() {
         resultsCard.style.display = 'block';
         resultsContainer.innerHTML = `
@@ -82,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
-    
+
     function showAlert(message, type) {
         const alert = document.createElement('div');
         alert.className = `alert alert-${type} alert-dismissible fade show`;
@@ -99,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => alert.remove(), 150);
         }, 5000);
     }
-    
+
     function performSearch(searchTerm, customDork) {
         let resultsHTML = '';
         
@@ -156,57 +166,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        if (!resultsHTML) {
-            resultsHTML = '<div class="alert alert-warning fade-in">No se seleccionaron categorías para buscar.</div>';
-        }
-        
-        resultsContainer.innerHTML = resultsHTML;
-        addSearchButtons();
+        resultsContainer.innerHTML = resultsHTML || '<div class="alert alert-warning">No se seleccionaron categorías para buscar.</div>';
     }
-    
+
     function generateSearchResult(title, dorkQuery) {
         return `
-            <div class="search-item fade-in">
+            <div class="search-item fade-in mb-3">
                 <h5>${title}</h5>
                 <p><code>${dorkQuery}</code></p>
                 <button class="btn btn-sm btn-outline-primary search-button mb-2" data-dork="${dorkQuery}">
                     <i class="fas fa-external-link-alt me-1"></i> Buscar en Google
                 </button>
-                <button class="btn btn-sm btn-outline-secondary copy-button" data-dork="${dorkQuery}">
+                <button class="btn btn-sm btn-outline-secondary copy-dork" data-dork="${dorkQuery}">
                     <i class="fas fa-copy me-1"></i> Copiar
                 </button>
                 <hr>
             </div>
         `;
     }
-    
-    function addSearchButtons() {
-        // Botones de búsqueda
-        document.querySelectorAll('.search-button').forEach(button => {
-            button.addEventListener('click', function() {
-                const dorkQuery = this.getAttribute('data-dork');
-                const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(dorkQuery)}`;
-                window.open(googleSearchUrl, '_blank');
+
+    // Evento para copiar dorks individuales
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('copy-dork') || e.target.closest('.copy-dork')) {
+            const button = e.target.classList.contains('copy-dork') ? 
+                          e.target : e.target.closest('.copy-dork');
+            const dork = button.getAttribute('data-dork');
+            
+            navigator.clipboard.writeText(dork).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
             });
-        });
-        
-        // Botones de copiar
-        document.querySelectorAll('.copy-button').forEach(button => {
-            button.addEventListener('click', function() {
-                const dorkQuery = this.getAttribute('data-dork');
-                navigator.clipboard.writeText(dorkQuery).then(() => {
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                    }, 2000);
-                }).catch(err => {
-                    showAlert('Error al copiar: ' + err, 'danger');
-                });
-            });
-        });
-    }
-    
+        }
+    });
+
     // Inicialización
     toggleCategoryCheckboxes(true);
 });
